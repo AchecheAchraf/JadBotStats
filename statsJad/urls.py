@@ -16,7 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from .views import index  # Importer la vue index
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('index/', index),  # Route pour la vue index
 ]
