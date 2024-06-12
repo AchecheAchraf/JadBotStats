@@ -156,6 +156,8 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from django import forms
 
+from django import forms
+
 class ServiceForm(forms.Form):
     SERVICE_CHOICES = [
         ('tous', 'Tous'),
@@ -165,6 +167,9 @@ class ServiceForm(forms.Form):
         ('entretien-courant-avance', 'Entretien courant Avancé'),
     ]
     service = forms.ChoiceField(choices=SERVICE_CHOICES, label='Service')
+    date_debut = forms.DateField(label='Date de début')
+    date_fin = forms.DateField(label='Date de fin')
+
 
 def index(request):
     if request.method == 'POST':

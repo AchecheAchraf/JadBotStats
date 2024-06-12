@@ -150,6 +150,30 @@
                         </div>
                         <!--/Metric Card-->
                     </div>
+
+
+
+
+
+                    <form method="post" action="{% url 'index' %}">
+                        {% csrf_token %}
+                        {{ form.service }}
+                        <div>
+                            <label for="date-debut-input">Date de début :</label>
+                            <input type="date" id="date-debut-input" name="date_debut">
+                        </div>
+                        <div>
+                            <label for="date-fin-input">Date de fin :</label>
+                            <input type="date" id="date-fin-input" name="date_fin">
+                        </div>
+                        <button type="submit">Soumettre</button>
+                    </form>
+
+
+
+
+
+                    
                     <div class="w-full md:w-1/2 xl:w-1/3 p-6">
                         <!--Metric Card-->
                         <div class="bg-gradient-to-b from-blue-200 to-blue-100 border-b-4 border-blue-500 rounded-lg shadow-xl p-5">
