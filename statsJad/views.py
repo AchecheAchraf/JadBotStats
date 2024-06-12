@@ -1,10 +1,7 @@
 from django.shortcuts import render
 from django.db import connection
 from datetime import datetime, timedelta
-
-from datetime import datetime, timedelta
-from django.shortcuts import render
-from django.db import connection
+from django.http import HttpResponse
 
 def protocol_list_with_name(request):
     specific_protocol_name = "Entretien courant"
@@ -148,35 +145,18 @@ def protocol_list(request):
 def index(request):
     return render(request, 'index.html')
 
-from django.shortcuts import render
-from django.http import HttpResponse
-from django import forms
 
-from django.shortcuts import render
-from django.http import HttpResponse
-from django import forms
-
-class ServiceForm(forms.Form):
-    SERVICE_CHOICES = [
-        ('tous', 'Tous'),
-        ('entretien-courant', 'Entretien courant'),
-        ('chambre-a-blanc', 'Chambre à blanc'),
-        ('entretien-courant-expert', 'Entretien courant Expert+'),
-        ('entretien-courant-avance', 'Entretien courant Avancé'),
-    ]
-    service = forms.ChoiceField(choices=SERVICE_CHOICES, label='Service')
-
-def index(request):
+def form(request):
     if request.method == 'POST':
-        form = ServiceForm(request.POST)
-        if form.is_valid():
-            selected_service = form.cleaned_data['service']
-            if selected_service == 'tous':
-                selected_services = [choice[1] for choice in ServiceForm.SERVICE_CHOICES if choice[0] != 'tous']
-                return HttpResponse(f"Services sélectionnés : {', '.join(selected_services)}")
-            else:
-                return HttpResponse(f"Service sélectionné : {selected_service}")
-    else:
-        form = ServiceForm()
+        start_date = request.POST.get('date-start')
+        end_date = request.POST.get('date-end')
+        protocol = request.POST.get('protocol-select')
 
-    return render(request, 'index.html', {'form': form})
+        # Print the received data
+        print("Start Date:", start_date)
+        print("End Date:", end_date)
+        print("Protocol:", protocol)
+
+        return HttpResponse("Form submitted successfully!")
+    else:
+        return HttpResponse("Invalid request method.")
