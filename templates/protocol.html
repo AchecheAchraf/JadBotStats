@@ -1,0 +1,24 @@
+<!-- protocol.html -->
+<h1>Protocol Events</h1>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>User ID</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Protocol Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in protocol_events %}
+            <tr>
+                <td>{{ event.0 }}</td>
+                <td>{{ event.1 }}</td>
+                <td>{{ event.2 }}</td>
+                <td>{{ event.3 }}</td>
+                <td>{{ event.4 }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
