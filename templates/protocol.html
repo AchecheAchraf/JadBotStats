@@ -3,21 +3,22 @@
 <table>
     <thead>
         <tr>
-            <th>ID</th>
+            <th>Event ID</th>
             <th>User ID</th>
             <th>Start</th>
             <th>End</th>
             <th>Protocol Name</th>
+            <th>EHPAD ID</th>
         </tr>
     </thead>
     <tbody>
         {% for event in protocol_events %}
             <tr>
-                <td>{{ event.0 }}</td>
-                <td>{{ event.1 }}</td>
-                <td>{{ event.2 }}</td>
-                <td>{{ event.3 }}</td>
-                <td>{{ event.4 }}</td>
+                <td>{{ event.event_id }}</td>
+                <td>{{ event.user_id }}</td>
+                <td>{{ event.start }}</td>
+                <td>{{ event.end }}</td>
+                <td>{{ event.protocol_name }}</td>
             </tr>
         {% endfor %}
     </tbody>
