@@ -2,18 +2,21 @@ from django.shortcuts import render
 from django.db import connection
 from datetime import datetime, timedelta
 
+from datetime import datetime, timedelta
+from django.shortcuts import render
+from django.db import connection
+
 def protocol_list_with_name(request):
-    # Hardcoded protocol name
-    specific_protocol_name = "Entretien courant"  # Change this to any desired protocol name
+    specific_protocol_name = "Entretien courant"
     
     with connection.cursor() as cursor:
-        query = f"""
+        query = """
             SELECT 
                 pe.id AS event_id, 
                 pe.user_id, 
                 pe.start, 
                 pe."end", 
-                p.protocol_name,
+                p.protocol_name
             FROM 
                 protocol_event pe
             INNER JOIN 
@@ -31,17 +34,15 @@ def protocol_list_with_name(request):
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
 def protocol_list_with_name_last_month(request):
-    # Calculate the first and last day of the previous month
     today = datetime.today()
     first_day_of_this_month = today.replace(day=1)
     last_day_of_last_month = first_day_of_this_month - timedelta(days=1)
     first_day_of_last_month = last_day_of_last_month.replace(day=1)
 
-    # Hardcoded protocol name
-    specific_protocol_name = "Entretien courant"  # Change this to any desired protocol name
+    specific_protocol_name = "Entretien courant"
     
     with connection.cursor() as cursor:
-        query = f"""
+        query = """
             SELECT 
                 pe.id AS event_id, 
                 pe.user_id, 
@@ -68,10 +69,6 @@ def protocol_list_with_name_last_month(request):
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
 def protocol_list_last_month(request):
-    #start_date = request.GET.get('start')
-    #end_date = request.GET.get('end')
-
-    # Calculate the first and last day of the previous month
     today = datetime.today()
     first_day_of_this_month = today.replace(day=1)
     last_day_of_last_month = first_day_of_this_month - timedelta(days=1)
@@ -113,7 +110,6 @@ def protocol_list_last_month(request):
 
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
-
 def protocol_list(request):
     protocol_names = [
         "Entretien courant",
@@ -148,3 +144,39 @@ def protocol_list(request):
         ]
 
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
+
+def index(request):
+    return render(request, 'index.html')
+
+from django.shortcuts import render
+from django.http import HttpResponse
+from django import forms
+
+from django.shortcuts import render
+from django.http import HttpResponse
+from django import forms
+
+class ServiceForm(forms.Form):
+    SERVICE_CHOICES = [
+        ('tous', 'Tous'),
+        ('entretien-courant', 'Entretien courant'),
+        ('chambre-a-blanc', 'Chambre à blanc'),
+        ('entretien-courant-expert', 'Entretien courant Expert+'),
+        ('entretien-courant-avance', 'Entretien courant Avancé'),
+    ]
+    service = forms.ChoiceField(choices=SERVICE_CHOICES, label='Service')
+
+def index(request):
+    if request.method == 'POST':
+        form = ServiceForm(request.POST)
+        if form.is_valid():
+            selected_service = form.cleaned_data['service']
+            if selected_service == 'tous':
+                selected_services = [choice[1] for choice in ServiceForm.SERVICE_CHOICES if choice[0] != 'tous']
+                return HttpResponse(f"Services sélectionnés : {', '.join(selected_services)}")
+            else:
+                return HttpResponse(f"Service sélectionné : {selected_service}")
+    else:
+        form = ServiceForm()
+
+    return render(request, 'index.html', {'form': form})
