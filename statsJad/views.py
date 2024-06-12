@@ -148,3 +148,6 @@ def protocol_list(request):
         ]
 
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
+
+def index(request):
+    return render(request, 'index.html')
