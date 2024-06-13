@@ -30,6 +30,40 @@ def protocol_list_with_name(request):
 
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
+def protocol_list_with_name_last_month(request):
+    today = datetime.today()
+    first_day_of_this_month = today.replace(day=1)
+    last_day_of_last_month = first_day_of_this_month - timedelta(days=1)
+    first_day_of_last_month = last_day_of_last_month.replace(day=1)
+
+    specific_protocol_name = "Entretien courant"
+    
+    with connection.cursor() as cursor:
+        query = """
+            SELECT 
+                pe.id AS event_id, 
+                pe.user_id, 
+                pe.start, 
+                pe."end", 
+                p.protocol_name,
+                pe.ehpad_id
+            FROM 
+                protocol_event pe
+            INNER JOIN 
+                protocol p ON pe.protocol_id = p.protocol_id
+            WHERE 
+                p.protocol_name = %s
+                AND pe.start >= %s
+                AND pe."end" <= %s
+        """
+        cursor.execute(query, [specific_protocol_name, first_day_of_last_month, last_day_of_last_month])
+        columns = [col[0] for col in cursor.description]
+        protocol_events = [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
+
+    return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
 def protocol_list_last_month(request):
     today = datetime.today()
@@ -112,7 +146,6 @@ def index(request):
     return render(request, 'index.html')
 
 from datetime import datetime
-
 def protocol(request):
     # Get values from the form
     start_date_str = request.POST.get('date-start')
@@ -186,6 +219,10 @@ def protocol(request):
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
 
+
+
+
+
 def form(request):
     if request.method == 'POST':
         start_date = request.POST.get('date-start')
@@ -200,5 +237,6 @@ def form(request):
         return HttpResponse("Form submitted successfully!")
     else:
         return HttpResponse("Invalid request method.")
+    
     
     
