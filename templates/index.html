@@ -117,9 +117,11 @@
                     <div class="w-full md:w-1/2 xl:w-1/3 p-6">
                         <!--Metric Card-->
                         <div class="bg-gradient-to-b from-green-200 to-green-100 border-b-4 border-green-600 rounded-lg shadow-xl p-5">
+                            <form method="post" action="{% url 'form' %}">
+                                {% csrf_token %}
                             <div class="flex flex-row items-center">
                                 <h2 class="font-bold uppercase text-gray-600"><label for="date-input">Date de début :</label></h2>
-                                <input type="date" id="date-input" />
+                                <input type="date" id="date-start" name="date-start"/>
                                 <span id="formatted-date"></span>
                             </div>
                         </div>
@@ -130,7 +132,7 @@
                         <div class="bg-gradient-to-b from-pink-200 to-pink-100 border-b-4 border-pink-500 rounded-lg shadow-xl p-5">
                             <div class="flex flex-row items-center">
                                 <h2 class="font-bold uppercase text-gray-600"><label for="date-input">Date de fin :</label></h2>
-                                <input type="date" id="date-input" />
+                                <input type="date" name="date-end" id="date-end" />
                                 <span id="formatted-date"></span>
                             </div>
                         </div>
@@ -140,34 +142,22 @@
                         <!--Metric Card-->
                         <div class="bg-gradient-to-b from-yellow-200 to-yellow-100 border-b-4 border-yellow-600 rounded-lg shadow-xl p-5">
                             <div class="flex flex-row items-center">
-                              
-                                <form method="post" action="{% url 'index' %}">
-                                    {% csrf_token %}
-                                    {{ form.service }}
-                                    <button type="submit">Soumettre</button>
-                                </form>
+                                <div>
+                                    <label for="protocol-select" class="block text-lg font-medium text-gray-700 mb-2">Protocol:</label>
+                                    <select id="protocol-select" name="protocol-select" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <option>Tous les protocols</option>
+                                        <option>Entretien courant</option>
+                                        <option>Chambre à blanc</option>
+                                        <option>Entretien courant Expert+</option>
+                                        <option>Entretien courant Avancé</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">Submit</button>
+                            </form>
                             </div>
                         </div>
                         <!--/Metric Card-->
                     </div>
-
-
-
-
-
-                    <form method="post" action="{% url 'index' %}">
-                        {% csrf_token %}
-                        {{ form.service }}
-                        <div>
-                            <label for="date-debut-input">Date de début :</label>
-                            <input type="date" id="date-debut-input" name="date_debut">
-                        </div>
-                        <div>
-                            <label for="date-fin-input">Date de fin :</label>
-                            <input type="date" id="date-fin-input" name="date_fin">
-                        </div>
-                        <button type="submit">Soumettre</button>
-                    </form>
 
 
 
