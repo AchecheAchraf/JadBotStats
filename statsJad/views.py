@@ -140,11 +140,6 @@ def protocol(request):
             # If "Tous les protocols" is selected, search for all protocols
             query = f"""
                 SELECT 
-                    pe.id AS event_id, 
-                    pe.user_id, 
-                    pe.start, 
-                    pe."end", 
-                    p.protocol_name,
                     EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60 AS duration_minutes
                 FROM 
                     protocol_event pe
@@ -154,17 +149,13 @@ def protocol(request):
                     p.protocol_name IN %s
                     AND pe.start >= %s
                     AND pe."end" <= %s
+                    AND EXTRACT(EPOCH FROM (pe."end" - pe.start)) > 0
             """
             cursor.execute(query, [tuple(all_protocols), start_date_sql_format, end_date_sql_format])
         else:
             # Otherwise, search for the specific protocol selected
             query = """
                 SELECT 
-                    pe.id AS event_id, 
-                    pe.user_id, 
-                    pe.start, 
-                    pe."end", 
-                    p.protocol_name,
                     EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60 AS duration_minutes
                 FROM 
                     protocol_event pe
@@ -174,16 +165,26 @@ def protocol(request):
                     p.protocol_name = %s
                     AND pe.start >= %s
                     AND pe."end" <= %s
+                    AND EXTRACT(EPOCH FROM (pe."end" - pe.start)) > 0
             """
             cursor.execute(query, [protocol_name, start_date_sql_format, end_date_sql_format])
 
-        columns = [col[0] for col in cursor.description]
-        protocol_events = [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
+        # Fetch all durations
+        durations = cursor.fetchall()
 
-    return render(request, 'protocol.html', {'protocol_events': protocol_events})
+        # Calculate average duration (excluding zero durations)
+        durations = [duration[0] for duration in durations if duration[0] > 0]
+        avg_duration = sum(durations) / len(durations) if durations else 0
+
+    return render(request, 'index.html', {'avg_duration': avg_duration})
+
+    #     columns = [col[0] for col in cursor.description]
+    #     protocol_events = [
+    #         dict(zip(columns, row))
+    #         for row in cursor.fetchall()
+    #     ]
+
+    # return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
 
 def form(request):
