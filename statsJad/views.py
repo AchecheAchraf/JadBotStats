@@ -91,7 +91,6 @@ def protocol_list(request):
                 pe.start, 
                 pe."end", 
                 p.protocol_name,
-                pe.ehpad_id
             FROM 
                 protocol_event pe
             INNER JOIN 
@@ -175,6 +174,8 @@ def protocol(request):
         # Calculate average duration (excluding zero durations)
         durations = [duration[0] for duration in durations if duration[0] > 0]
         avg_duration = sum(durations) / len(durations) if durations else 0
+
+        avg_duration = round(avg_duration, 2)
 
     return render(request, 'index.html', {'avg_duration': avg_duration})
 
