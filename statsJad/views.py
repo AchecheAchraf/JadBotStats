@@ -146,6 +146,13 @@ def index(request):
     return render(request, 'index.html')
 
 from datetime import datetime
+from django.db import connection
+from django.shortcuts import render
+
+from django.shortcuts import render
+from datetime import datetime
+from django.db import connection
+
 def protocol(request):
     # Get values from the form
     start_date_str = request.POST.get('date-start')
@@ -156,9 +163,9 @@ def protocol(request):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
 
-    # Adjust to the appropriate format for SQL
-    start_date_sql_format = start_date.strftime('%B %d, %Y, %I:%M %p')
-    end_date_sql_format = end_date.strftime('%B %d, %Y, %I:%M %p')
+    # Format dates to 'dd/mm/yyyy'
+    formatted_start_date = start_date.strftime('%d/%m/%Y')
+    formatted_end_date = end_date.strftime('%d/%m/%Y')
 
     # Define the list of all protocol names
     all_protocols = [
@@ -173,11 +180,6 @@ def protocol(request):
             # If "Tous les protocols" is selected, search for all protocols
             query = f"""
                 SELECT 
-                    pe.id AS event_id, 
-                    pe.user_id, 
-                    pe.start, 
-                    pe."end", 
-                    p.protocol_name,
                     EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60 AS duration_minutes
                 FROM 
                     protocol_event pe
@@ -187,17 +189,13 @@ def protocol(request):
                     p.protocol_name IN %s
                     AND pe.start >= %s
                     AND pe."end" <= %s
+                    AND EXTRACT(EPOCH FROM (pe."end" - pe.start)) > 0
             """
-            cursor.execute(query, [tuple(all_protocols), start_date_sql_format, end_date_sql_format])
+            cursor.execute(query, [tuple(all_protocols), start_date, end_date])
         else:
             # Otherwise, search for the specific protocol selected
             query = """
                 SELECT 
-                    pe.id AS event_id, 
-                    pe.user_id, 
-                    pe.start, 
-                    pe."end", 
-                    p.protocol_name,
                     EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60 AS duration_minutes
                 FROM 
                     protocol_event pe
@@ -207,16 +205,25 @@ def protocol(request):
                     p.protocol_name = %s
                     AND pe.start >= %s
                     AND pe."end" <= %s
+                    AND EXTRACT(EPOCH FROM (pe."end" - pe.start)) > 0
             """
-            cursor.execute(query, [protocol_name, start_date_sql_format, end_date_sql_format])
+            cursor.execute(query, [protocol_name, start_date, end_date])
 
-        columns = [col[0] for col in cursor.description]
-        protocol_events = [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
+        # Fetch all durations
+        durations = cursor.fetchall()
 
-    return render(request, 'protocol.html', {'protocol_events': protocol_events})
+    # Calculate the average duration (excluding zero durations)
+    durations = [duration[0] for duration in durations if duration[0] > 0]
+    avg_duration = round(sum(durations) / len(durations), 2) if durations else 0
+
+    # Return the rounded average value along with the formatted dates and protocol
+    context = {
+        'avg_duration': avg_duration,
+        'start_date': formatted_start_date,
+        'end_date': formatted_end_date,
+        'protocol_name': protocol_name
+    }
+    return render(request, 'index.html', context)
 
 
 
