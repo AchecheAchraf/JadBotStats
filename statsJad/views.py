@@ -2,6 +2,8 @@ from django.shortcuts import render
 from django.db import connection
 from datetime import datetime, timedelta
 from django.http import HttpResponse
+import re
+
 
 def protocol_list_with_name(request):
     specific_protocol_name = "Entretien courant"
@@ -125,7 +127,6 @@ def protocol_list(request):
                 pe.start, 
                 pe."end", 
                 p.protocol_name,
-                pe.ehpad_id
             FROM 
                 protocol_event pe
             INNER JOIN 
@@ -148,6 +149,8 @@ def index(request):
 from datetime import datetime
 from django.db import connection
 from django.shortcuts import render
+
+
 
 from django.shortcuts import render
 from datetime import datetime
@@ -212,18 +215,29 @@ def protocol(request):
         # Fetch all durations
         durations = cursor.fetchall()
 
-    # Calculate the average duration (excluding zero durations)
+    # Extract durations and filter out zero durations
     durations = [duration[0] for duration in durations if duration[0] > 0]
+    
+    # Calculate the average duration (excluding zero durations)
     avg_duration = round(sum(durations) / len(durations), 2) if durations else 0
 
-    # Return the rounded average value along with the formatted dates and protocol
+    # Count the number of protocol events
+    protocol_count = len(durations)
+
+    # Count the number of durations with leading zeros
+    leading_zero_count = sum(1 for duration in durations if re.match(r'^0+\.\d+', str(duration)))
+
+    # Return the rounded average value along with the formatted dates, protocol, and leading zero count
     context = {
         'avg_duration': avg_duration,
         'start_date': formatted_start_date,
         'end_date': formatted_end_date,
-        'protocol_name': protocol_name
+        'protocol_name': protocol_name,
+        'protocol_count': protocol_count,
+        'leading_zero_count': leading_zero_count
     }
     return render(request, 'index.html', context)
+
 
 
 
