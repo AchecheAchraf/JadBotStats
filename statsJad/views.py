@@ -2,6 +2,8 @@ from django.shortcuts import render
 from django.db import connection
 from datetime import datetime, timedelta
 from django.http import HttpResponse
+import re
+
 
 def protocol_list_with_name(request):
     specific_protocol_name = "Entretien courant"
@@ -30,6 +32,40 @@ def protocol_list_with_name(request):
 
     return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
+def protocol_list_with_name_last_month(request):
+    today = datetime.today()
+    first_day_of_this_month = today.replace(day=1)
+    last_day_of_last_month = first_day_of_this_month - timedelta(days=1)
+    first_day_of_last_month = last_day_of_last_month.replace(day=1)
+
+    specific_protocol_name = "Entretien courant"
+    
+    with connection.cursor() as cursor:
+        query = """
+            SELECT 
+                pe.id AS event_id, 
+                pe.user_id, 
+                pe.start, 
+                pe."end", 
+                p.protocol_name,
+                pe.ehpad_id
+            FROM 
+                protocol_event pe
+            INNER JOIN 
+                protocol p ON pe.protocol_id = p.protocol_id
+            WHERE 
+                p.protocol_name = %s
+                AND pe.start >= %s
+                AND pe."end" <= %s
+        """
+        cursor.execute(query, [specific_protocol_name, first_day_of_last_month, last_day_of_last_month])
+        columns = [col[0] for col in cursor.description]
+        protocol_events = [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
+
+    return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
 def protocol_list_last_month(request):
     today = datetime.today()
@@ -111,6 +147,14 @@ def index(request):
     return render(request, 'index.html')
 
 from datetime import datetime
+from django.db import connection
+from django.shortcuts import render
+
+
+
+from django.shortcuts import render
+from datetime import datetime
+from django.db import connection
 
 def protocol(request):
     # Get values from the form
@@ -122,9 +166,9 @@ def protocol(request):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
 
-    # Adjust to the appropriate format for SQL
-    start_date_sql_format = start_date.strftime('%B %d, %Y, %I:%M %p')
-    end_date_sql_format = end_date.strftime('%B %d, %Y, %I:%M %p')
+    # Format dates to 'dd/mm/yyyy'
+    formatted_start_date = start_date.strftime('%d/%m/%Y')
+    formatted_end_date = end_date.strftime('%d/%m/%Y')
 
     # Define the list of all protocol names
     all_protocols = [
@@ -150,7 +194,7 @@ def protocol(request):
                     AND pe."end" <= %s
                     AND EXTRACT(EPOCH FROM (pe."end" - pe.start)) > 0
             """
-            cursor.execute(query, [tuple(all_protocols), start_date_sql_format, end_date_sql_format])
+            cursor.execute(query, [tuple(all_protocols), start_date, end_date])
         else:
             # Otherwise, search for the specific protocol selected
             query = """
@@ -166,26 +210,38 @@ def protocol(request):
                     AND pe."end" <= %s
                     AND EXTRACT(EPOCH FROM (pe."end" - pe.start)) > 0
             """
-            cursor.execute(query, [protocol_name, start_date_sql_format, end_date_sql_format])
+            cursor.execute(query, [protocol_name, start_date, end_date])
 
         # Fetch all durations
         durations = cursor.fetchall()
 
-        # Calculate average duration (excluding zero durations)
-        durations = [duration[0] for duration in durations if duration[0] > 0]
-        avg_duration = sum(durations) / len(durations) if durations else 0
+    # Extract durations and filter out zero durations
+    durations = [duration[0] for duration in durations if duration[0] > 0]
+    
+    # Calculate the average duration (excluding zero durations)
+    avg_duration = round(sum(durations) / len(durations), 2) if durations else 0
 
-        avg_duration = round(avg_duration, 2)
+    # Count the number of protocol events
+    protocol_count = len(durations)
 
-    return render(request, 'index.html', {'avg_duration': avg_duration})
+    # Count the number of durations with leading zeros
+    leading_zero_count = sum(1 for duration in durations if re.match(r'^0+\.\d+', str(duration)))
 
-    #     columns = [col[0] for col in cursor.description]
-    #     protocol_events = [
-    #         dict(zip(columns, row))
-    #         for row in cursor.fetchall()
-    #     ]
+    # Return the rounded average value along with the formatted dates, protocol, and leading zero count
+    context = {
+        'avg_duration': avg_duration,
+        'start_date': formatted_start_date,
+        'end_date': formatted_end_date,
+        'protocol_name': protocol_name,
+        'protocol_count': protocol_count,
+        'leading_zero_count': leading_zero_count
+    }
+    return render(request, 'index.html', context)
 
-    # return render(request, 'protocol.html', {'protocol_events': protocol_events})
+
+
+
+
 
 
 def form(request):
@@ -202,3 +258,6 @@ def form(request):
         return HttpResponse("Form submitted successfully!")
     else:
         return HttpResponse("Invalid request method.")
+    
+    
+    
