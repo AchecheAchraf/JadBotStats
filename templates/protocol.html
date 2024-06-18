@@ -1,25 +1,67 @@
-<h1>Protocol Events</h1>
-<table>
-    <thead>
-        <tr>
-            <th>Event ID</th>
-            <th>User ID</th>
-            <th>Start</th>
-            <th>End</th>
-            <th>Protocol Name</th>
-            <th>Duration (minutes)</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for event in protocol_events %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Protocol Data</title>
+    <style>
+        table {
+            width: 50%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Protocol Data</h1>
+    <p><strong>Start Date:</strong> {{ start_date }}</p>
+    <p><strong>End Date:</strong> {{ end_date }}</p>
+    <p><strong>Protocol Name:</strong> {{ protocol_name }}</p>
+    <p><strong>Average Duration:</strong> {{ avg_duration }} minutes</p>
+    <p><strong>Protocol Count:</strong> {{ protocol_count }}</p>
+    <p><strong>Leading Zero Count:</strong> {{ leading_zero_count }}</p>
+
+    <h2>Average Duration by Room Group</h2>
+    <table>
+        <thead>
             <tr>
-                <td>{{ event.event_id }}</td>
-                <td>{{ event.user_id }}</td>
-                <td>{{ event.start }}</td>
-                <td>{{ event.end }}</td>
-                <td>{{ event.protocol_name }}</td>
-                <td>{{ event.duration_minutes }}</td>
+                <th>Room Group Name</th>
+                <th>Average Duration (minutes)</th>
             </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            {% for group_name, avg_duration in avg_duration_by_room_group.items %}
+            <tr>
+                <td>{{ group_name }}</td>
+                <td>{{ avg_duration }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Average Duration by Room</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Room Number</th>
+                <th>Average Duration (minutes)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for room_number, avg_duration in avg_duration_by_room.items %}
+            <tr>
+                <td>{{ room_number }}</td>
+                <td>{{ avg_duration }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -240,9 +240,49 @@ def protocol(request):
 
 
 
+def protocolrooms(request):
+    # Get values from the form
+    start_date_str = request.POST.get('date-start')
+    end_date_str = request.POST.get('date-end')
+    protocol_name = request.POST.get('protocol-select')
 
+    # Convert form dates to datetime objects
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
 
+    query = """
+        SELECT 
+            r.room_number,
+            COUNT(pp.room_id) AS protocol_event_count
+        FROM 
+            protocol_event pe
+        LEFT JOIN 
+            protocol p ON pe.protocol_id = p.protocol_id
+        LEFT JOIN 
+            room r ON pe.ehpad_id = r.ehpad_id
+        WHERE 
+            pe.start >= %s
+            AND pe."end" <= %s
+            AND p.protocol_name = %s
+        GROUP BY 
+            r.room_number
+        ORDER BY 
+            r.room_number
+    """
 
+    with connection.cursor() as cursor:
+        cursor.execute(query, [start_date, end_date, protocol_name])
+        results = cursor.fetchall()
+
+    # Print the results in the terminal
+    print(f"Protocols from {start_date_str} to {end_date_str} for protocol: {protocol_name}")
+    print(results)
+    for row in results:
+        room_number = row[0]
+        protocol_event_count = row[1]
+        print(f"Room Number: {room_number}, Protocol Event Count: {protocol_event_count}")
+    
+    return HttpResponse("The results have been printed in the terminal.")
 
 def form(request):
     if request.method == 'POST':
