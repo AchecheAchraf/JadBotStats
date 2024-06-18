@@ -301,3 +301,64 @@ def form(request):
     
     
     
+    
+    
+    
+from io import BytesIO
+import base64
+from django.shortcuts import render
+import matplotlib.pyplot as plt
+import numpy as np
+# Import facultatif pour afficher joliment les résultats dans un tableau
+from tabulate import tabulate
+from django.db import connection
+
+
+from django.shortcuts import render
+from django.db import connection
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+
+def graph_protocol_task_counts(request):
+    # Exécution de la requête SQL pour récupérer les données
+    with connection.cursor() as cursor:
+        query = """
+            SELECT p.protocol_id, p.protocol_name, COUNT(pt.id) AS task_count
+            FROM protocol p
+            LEFT JOIN protocol_task pt ON p.protocol_id = pt.protocol_id
+            GROUP BY p.protocol_id, p.protocol_name
+            ORDER BY p.protocol_name;
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+    # Afficher les résultats dans le terminal
+    headers = ["Protocol ID", "Protocol Name", "Task Count"]
+    print("\nRésultats dans le terminal:")
+    for row in rows:
+        print(row)
+
+    # Extraction des données pour le graphique
+    protocol_names = [row[1] for row in rows]  # Noms des protocoles
+    task_counts = [row[2] for row in rows]     # Nombre de tâches
+
+    # Création du graphique à barres avec Matplotlib
+    plt.figure(figsize=(10, 6))
+    plt.bar(protocol_names, task_counts, color='blue')
+    plt.xlabel('Protocole')
+    plt.ylabel('Nombre de Tâches')
+    plt.title('Nombre de Tâches par Protocole')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+
+    # Conversion du graphique en image pour l'intégrer dans le template
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png')
+    plt.close()
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    buffer.close()
+
+    # Renvoyer le résultat dans le template
+    context = {'image_base64': image_base64}
+    return render(request, 'index.html', context)
