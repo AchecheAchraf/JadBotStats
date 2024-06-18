@@ -221,12 +221,8 @@
 
 
                 <div class="flex flex-row flex-wrap flex-grow mt-2">
-                    <h1>Graphique de Tâches par Protocole</h1>
-                    {% if image_base64 %}
-                        <img src="data:image/png;base64,{{ image_base64 }}" alt="Graphique">
-                    {% else %}
-                        <p>Aucune image à afficher.</p>
-                    {% endif %}
+
+
                 <div class="w-full md:w-1/2 xl:w-1/3 p-6">
                     <!--Graph Card-->
                     <div class="bg-white border-transparent rounded-lg shadow-xl">
@@ -234,7 +230,36 @@
                             <h class="font-bold uppercase text-gray-600">Graph</h>
                         </div>
                         <div class="p-5">
-                            {{ graph_html | safe }}
+                            <canvas id="chartjs-7" class="chartjs" width="undefined" height="undefined"></canvas>
+                            <script>
+                                new Chart(document.getElementById("chartjs-7"), {
+                                    "type": "bar",
+                                    "data": {
+                                        "labels": ["January", "February", "March", "April"],
+                                        "datasets": [{
+                                            "label": "Page Impressions",
+                                            "data": [10, 20, 30, 40],
+                                            "borderColor": "rgb(255, 99, 132)",
+                                            "backgroundColor": "rgba(255, 99, 132, 0.2)"
+                                        }, {
+                                            "label": "Adsense Clicks",
+                                            "data": [5, 15, 10, 30],
+                                            "type": "line",
+                                            "fill": false,
+                                            "borderColor": "rgb(54, 162, 235)"
+                                        }]
+                                    },
+                                    "options": {
+                                        "scales": {
+                                            "yAxes": [{
+                                                "ticks": {
+                                                    "beginAtZero": true
+                                                }
+                                            }]
+                                        }
+                                    }
+                                });
+                            </script>
                         </div>
                     </div>
                     <!--/Graph Card-->
