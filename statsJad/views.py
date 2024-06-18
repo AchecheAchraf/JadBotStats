@@ -3,7 +3,63 @@ from django.db import connection
 from datetime import datetime, timedelta
 from django.http import HttpResponse
 import re
+import plotly.graph_objs as go
 
+
+def generate_protocols_per_day_graph(start_date, end_date, protocol_name):
+    # Query to get the number of protocols done per day
+    with connection.cursor() as cursor:
+        if protocol_name == "Tous les protocols":
+            query = """
+                SELECT DATE(start) as day, COUNT(*) as protocol_count
+                FROM protocol_event
+                WHERE start >= %s AND start <= %s
+                GROUP BY DATE(start)
+                ORDER BY day
+            """
+            cursor.execute(query, [start_date, end_date])
+        else:
+            query = """
+                SELECT DATE(pe.start) as day, COUNT(*) as protocol_count
+                FROM protocol_event pe
+                JOIN protocol p ON pe.protocol_id = p.protocol_id
+                WHERE pe.start >= %s AND pe.start <= %s AND p.protocol_name = %s
+                GROUP BY DATE(pe.start)
+                ORDER BY day
+            """
+            cursor.execute(query, [start_date, end_date, protocol_name])
+
+        results = cursor.fetchall()
+
+    # Prepare data for the graph
+    dates = [result[0] for result in results]
+    protocol_counts = [result[1] for result in results]
+
+    # Create the bar plot
+    trace_jour = go.Bar(
+        x=dates,
+        y=protocol_counts,
+        name='Number of Protocols'
+    )
+
+    layout = go.Layout(
+        title='Number of Protocols Per Day',
+        xaxis=dict(title='Date'),
+        yaxis=dict(title='Number of Protocols'),
+    )
+
+    fig = go.Figure(data=[trace_jour], layout=layout)
+
+    # Update layout for legend and graph title
+    fig.update_layout(
+        legend=dict(orientation='v', yanchor='bottom', y=0.3, xanchor='center', x=1.2),
+        title_font=dict(size=20, family='Arial')
+    )
+
+    # Convert the figure to an HTML string
+    graph_html = fig.to_html(full_html=False)
+    
+    return graph_html
 
 def protocol_list_with_name(request):
     specific_protocol_name = "Entretien courant"
@@ -152,10 +208,6 @@ from django.shortcuts import render
 
 
 
-from django.shortcuts import render
-from datetime import datetime
-from django.db import connection
-
 def protocol(request):
     # Get values from the form
     start_date_str = request.POST.get('date-start')
@@ -227,6 +279,8 @@ def protocol(request):
     # Count the number of durations with leading zeros
     leading_zero_count = sum(1 for duration in durations if re.match(r'^0+\.\d+', str(duration)))
 
+    graph_html = generate_protocols_per_day_graph(start_date, end_date, protocol_name)
+
     # Return the rounded average value along with the formatted dates, protocol, and leading zero count
     context = {
         'avg_duration': avg_duration,
@@ -234,7 +288,8 @@ def protocol(request):
         'end_date': formatted_end_date,
         'protocol_name': protocol_name,
         'protocol_count': protocol_count,
-        'leading_zero_count': leading_zero_count
+        'leading_zero_count': leading_zero_count,
+        'graph_html': graph_html
     }
     return render(request, 'index.html', context)
 
@@ -283,6 +338,67 @@ def protocolrooms(request):
         print(f"Room Number: {room_number}, Protocol Event Count: {protocol_event_count}")
     
     return HttpResponse("The results have been printed in the terminal.")
+
+from collections import defaultdict
+import logging
+
+def protocolday(request):
+    if request.method == 'POST':
+        # Get values from the form
+        start_date_str = request.POST.get('date-start')
+        end_date_str = request.POST.get('date-end')
+        protocol_name = request.POST.get('protocol-select')
+
+        # Convert form dates to datetime objects
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+        # Format dates to 'dd/mm/yyyy'
+        formatted_start_date = start_date.strftime('%d/%m/%Y')
+        formatted_end_date = end_date.strftime('%d/%m/%Y')
+
+        # Query to get the number of protocols done per day
+        with connection.cursor() as cursor:
+            if protocol_name == "Tous les protocols":
+                query = """
+                    SELECT DATE(start) as day, COUNT(*) as protocol_count
+                    FROM protocol_event
+                    WHERE start >= %s AND start <= %s
+                    GROUP BY DATE(start)
+                    ORDER BY day
+                """
+                cursor.execute(query, [start_date, end_date])
+            else:
+                query = """
+                    SELECT DATE(pe.start) as day, COUNT(*) as protocol_count
+                    FROM protocol_event pe
+                    JOIN protocol p ON pe.protocol_id = p.protocol_id
+                    WHERE pe.start >= %s AND pe.start <= %s AND p.protocol_name = %s
+                    GROUP BY DATE(pe.start)
+                    ORDER BY day
+                """
+                cursor.execute(query, [start_date, end_date, protocol_name])
+
+            results = cursor.fetchall()
+
+        # Print the results for verification
+        for result in results:
+            print(f"Date: {result[0]}, Protocol Count: {result[1]}")
+
+
+        # Prepare data for the template
+        protocols_per_day = defaultdict(int)
+        for day, count in results:
+            protocols_per_day[day] = count
+
+        context = {
+            'protocols_per_day': protocols_per_day,
+            'formatted_start_date': formatted_start_date,
+            'formatted_end_date': formatted_end_date,
+            'protocol_name': protocol_name,
+        }
+
+        return HttpResponse("The results have been printed in the terminal.")
 
 def form(request):
     if request.method == 'POST':
