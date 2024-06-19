@@ -184,7 +184,7 @@ def generate_tasks_count_graph(start_date, end_date):
     trace = go.Bar(
         x=protocol_names,
         y=task_counts,
-        name='Number of Tasks'
+        name='Number de tâches'
     )
 
     layout = go.Layout(
