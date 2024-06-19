@@ -193,8 +193,8 @@ def generate_tasks_count_graph(start_date, end_date):
         title='Nombre de tâches par protocole',
         xaxis=dict(title='Protocole'),
         yaxis=dict(title='Nombre de tâches'),
-        height=250,  # Set the height of the plot
-        width=300,   # Set the width of the plot
+        height=400,  # Set the height of the plot
+        width=700,   # Set the width of the plot
     )
 
     fig = go.Figure(data=[trace], layout=layout)
@@ -347,8 +347,9 @@ def plot_is_valid_pie():
                                  marker=dict(colors=colors), hole=0.7)])
 
     fig.update_layout(
-        title='Pourcentage des tâches valides ',
-        height=400,
+        title='Pourcentage des tâches validées ',
+        height=300,
+        
         margin=dict(l=50, r=50, t=50, b=50)
     )
 
