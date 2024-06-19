@@ -200,14 +200,14 @@ def plot_is_valid_pie():
     # Create data for Plotly pie chart
     labels = ['Valid', 'Invalid']
     values = [valid_count, invalid_count]
-    colors = ['#1f77b4', '#ff7f0e']  # Blue for Valid, Orange for Invalid
+    colors = ['rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)']  # Pink and Blue with transparency
 
     fig = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='percent',
-                                 marker_colors=colors, hole=0.7)])
+                                 marker=dict(colors=colors), hole=0.7)])
 
     fig.update_layout(
-        title='Valid vs Invalid Audit Element Events',
-        height=500,
+        title='Pourcentage des tâches valides ',
+        height=400,
         margin=dict(l=50, r=50, t=50, b=50)
     )
 
