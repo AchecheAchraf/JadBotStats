@@ -206,6 +206,88 @@ from datetime import datetime
 from django.db import connection
 from django.shortcuts import render
 
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+from datetime import datetime
+from django.db import connection
+from collections import defaultdict
+from django.http import HttpResponse
+from django.shortcuts import render
+import re
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+from io import BytesIO
+import base64
+from django.db import connection
+from datetime import datetime
+
+
+def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
+    with connection.cursor() as cursor:
+        if protocol_name == "Tous les protocols":
+            query = """
+                SELECT 
+                    DATE(pe.start) as day, 
+                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
+                FROM 
+                    protocol_event pe
+                JOIN 
+                    protocol p ON pe.protocol_id = p.protocol_id
+                WHERE 
+                    pe.start >= %s AND pe.start <= %s
+                GROUP BY 
+                    DATE(pe.start)
+                ORDER BY 
+                    day
+            """
+            cursor.execute(query, [start_date, end_date])
+        else:
+            query = """
+                SELECT 
+                    DATE(pe.start) as day, 
+                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
+                FROM 
+                    protocol_event pe
+                JOIN 
+                    protocol p ON pe.protocol_id = p.protocol_id
+                WHERE 
+                    pe.start >= %s AND pe.start <= %s AND p.protocol_name = %s
+                GROUP BY 
+                    DATE(pe.start)
+                ORDER BY 
+                    day
+            """
+            cursor.execute(query, [start_date, end_date, protocol_name])
+
+        results = cursor.fetchall()
+
+    days = [result[0] for result in results]
+    avg_durations = [result[1] for result in results]
+
+    fig = make_subplots()
+    trace = go.Scatter(
+        x=days,
+        y=avg_durations,
+        mode='lines+markers+text',
+        text=[f'{avg:.2f}' for avg in avg_durations],
+        textposition='top center',
+        marker=dict(size=10),
+        line=dict(width=2, color='blue')
+    )
+
+    fig.add_trace(trace)
+    fig.update_layout(
+        title=f'Durée moyenne pour\n{protocol_name}',
+        xaxis_title='Date',
+        yaxis_title='Durée moyenne minutes',
+        xaxis=dict(tickformat='%Y-%m-%d'),
+        autosize=True,
+        height=450,
+    )
+
+    graph_html = fig.to_html(full_html=False)
+    return graph_html
 
 
 def protocol(request):
@@ -280,6 +362,7 @@ def protocol(request):
     leading_zero_count = sum(1 for duration in durations if re.match(r'^0+\.\d+', str(duration)))
 
     graph_html = generate_protocols_per_day_graph(start_date, end_date, protocol_name)
+    avg_duration_graph_html = generate_avg_duration_per_day_graph(start_date, end_date, protocol_name)
 
     # Return the rounded average value along with the formatted dates, protocol, and leading zero count
     context = {
@@ -289,58 +372,12 @@ def protocol(request):
         'protocol_name': protocol_name,
         'protocol_count': protocol_count,
         'leading_zero_count': leading_zero_count,
-        'graph_html': graph_html
+        'graph_html': graph_html,
+        'avg_duration_graph_html': avg_duration_graph_html
     }
     return render(request, 'index.html', context)
 
 
-
-def protocolrooms(request):
-    # Get values from the form
-    start_date_str = request.POST.get('date-start')
-    end_date_str = request.POST.get('date-end')
-    protocol_name = request.POST.get('protocol-select')
-
-    # Convert form dates to datetime objects
-    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-
-    query = """
-        SELECT 
-            r.room_number,
-            COUNT(pp.room_id) AS protocol_event_count
-        FROM 
-            protocol_event pe
-        LEFT JOIN 
-            protocol p ON pe.protocol_id = p.protocol_id
-        LEFT JOIN 
-            room r ON pe.ehpad_id = r.ehpad_id
-        WHERE 
-            pe.start >= %s
-            AND pe."end" <= %s
-            AND p.protocol_name = %s
-        GROUP BY 
-            r.room_number
-        ORDER BY 
-            r.room_number
-    """
-
-    with connection.cursor() as cursor:
-        cursor.execute(query, [start_date, end_date, protocol_name])
-        results = cursor.fetchall()
-
-    # Print the results in the terminal
-    print(f"Protocols from {start_date_str} to {end_date_str} for protocol: {protocol_name}")
-    print(results)
-    for row in results:
-        room_number = row[0]
-        protocol_event_count = row[1]
-        print(f"Room Number: {room_number}, Protocol Event Count: {protocol_event_count}")
-    
-    return HttpResponse("The results have been printed in the terminal.")
-
-from collections import defaultdict
-import logging
 
 def protocolday(request):
     if request.method == 'POST':
@@ -391,14 +428,61 @@ def protocolday(request):
         for day, count in results:
             protocols_per_day[day] = count
 
+        avg_duration_graph_html = generate_avg_duration_per_day_graph(start_date, end_date, protocol_name)
+
         context = {
             'protocols_per_day': protocols_per_day,
             'formatted_start_date': formatted_start_date,
             'formatted_end_date': formatted_end_date,
             'protocol_name': protocol_name,
+            'avg_duration_graph_html': avg_duration_graph_html
         }
 
-        return HttpResponse("The results have been printed in the terminal.")
+        return render(request, 'index.html', context)
+
+def protocolrooms(request):
+    # Get values from the form
+    start_date_str = request.POST.get('date-start')
+    end_date_str = request.POST.get('date-end')
+    protocol_name = request.POST.get('protocol-select')
+
+    # Convert form dates to datetime objects
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+    query = """
+        SELECT 
+            r.room_number,
+            COUNT(pe.room_id) AS protocol_event_count
+        FROM 
+            protocol_event pe
+        LEFT JOIN 
+            protocol p ON pe.protocol_id = p.protocol_id
+        LEFT JOIN 
+            room r ON pe.ehpad_id = r.ehpad_id
+        WHERE 
+            pe.start >= %s
+            AND pe."end" <= %s
+            AND p.protocol_name = %s
+        GROUP BY 
+            r.room_number
+        ORDER BY 
+            r.room_number
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(query, [start_date, end_date, protocol_name])
+        results = cursor.fetchall()
+
+    # Print the results in the terminal
+    print(f"Protocols from {start_date_str} to {end_date_str} for protocol: {protocol_name}")
+    print(results)
+    for row in results:
+        room_number = row[0]
+        protocol_event_count = row[1]
+        print(f"Room Number: {room_number}, Protocol Event Count: {protocol_event_count}")
+    
+    return HttpResponse("The results have been printed in the terminal.")
 
 def form(request):
     if request.method == 'POST':
@@ -414,10 +498,6 @@ def form(request):
         return HttpResponse("Form submitted successfully!")
     else:
         return HttpResponse("Invalid request method.")
-    
-    
-    
-    
-    
-    
+
+
 
