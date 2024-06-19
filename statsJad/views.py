@@ -41,11 +41,9 @@ def generate_protocols_per_day_graph(start_date, end_date, protocol_name):
     trace_jour = go.Bar(
         x=dates,
         y=protocol_counts,
-        name='Nombre de protocols par jour'
     )
 
     layout = go.Layout(
-        title='Nombre de protocols par jour',
         xaxis=dict(title='Date'),
         yaxis=dict(title='Nombre de Protocols'),
     )
@@ -144,7 +142,6 @@ def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
 
     fig.add_trace(trace)
     fig.update_layout(
-        title=f'Durée moyenne pour\n{protocol_name}',
         xaxis_title='Date',
         yaxis_title='Durée moyenne minutes',
         xaxis=dict(tickformat='%Y-%m-%d'),
@@ -186,11 +183,9 @@ def generate_tasks_count_graph(start_date, end_date):
     trace = go.Bar(
         x=protocol_names,
         y=task_counts,
-        name='Number of Tasks'
     )
 
     layout = go.Layout(
-        title='Nombre de tâches par protocole',
         xaxis=dict(title='Protocole'),
         yaxis=dict(title='Nombre de tâches'),
         height=400,  # Set the height of the plot
@@ -347,9 +342,7 @@ def plot_is_valid_pie():
                                  marker=dict(colors=colors), hole=0.7)])
 
     fig.update_layout(
-        title='Pourcentage des tâches validées ',
-        height=300,
-        
+        height=390,
         margin=dict(l=50, r=50, t=50, b=50)
     )
 
@@ -413,7 +406,6 @@ def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
 
     fig.add_trace(trace)
     fig.update_layout(
-        title=f'Durée moyenne pour\n{protocol_name}',
         xaxis_title='Date',
         yaxis_title='Durée moyenne minutes',
         xaxis=dict(tickformat='%Y-%m-%d'),
