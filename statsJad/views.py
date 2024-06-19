@@ -155,6 +155,8 @@ def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
     graph_html = fig.to_html(full_html=False)
     return graph_html
 
+import plotly.graph_objects as go
+
 def generate_tasks_count_graph(start_date, end_date):
     all_protocols = [
         "Entretien courant",
@@ -188,9 +190,11 @@ def generate_tasks_count_graph(start_date, end_date):
     )
 
     layout = go.Layout(
-        title='Nombre de tâchse par protocol',
-        xaxis=dict(title='Protocol'),
+        title='Nombre de tâches par protocole',
+        xaxis=dict(title='Protocole'),
         yaxis=dict(title='Nombre de tâches'),
+        height=250,  # Set the height of the plot
+        width=300,   # Set the width of the plot
     )
 
     fig = go.Figure(data=[trace], layout=layout)
