@@ -155,6 +155,8 @@ def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
     graph_html = fig.to_html(full_html=False)
     return graph_html
 
+import plotly.graph_objects as go
+
 def generate_tasks_count_graph(start_date, end_date):
     all_protocols = [
         "Entretien courant",
@@ -188,9 +190,11 @@ def generate_tasks_count_graph(start_date, end_date):
     )
 
     layout = go.Layout(
-        title='Nombre de tâchse par protocol',
-        xaxis=dict(title='Protocol'),
+        title='Nombre de tâches par protocole',
+        xaxis=dict(title='Protocole'),
         yaxis=dict(title='Nombre de tâches'),
+        height=250,  # Set the height of the plot
+        width=300,   # Set the width of the plot
     )
 
     fig = go.Figure(data=[trace], layout=layout)
@@ -337,14 +341,14 @@ def plot_is_valid_pie():
     # Create data for Plotly pie chart
     labels = ['Valid', 'Invalid']
     values = [valid_count, invalid_count]
-    colors = ['#1f77b4', '#ff7f0e']  # Blue for Valid, Orange for Invalid
+    colors = ['rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)']  # Pink and Blue with transparency
 
     fig = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='percent',
-                                 marker_colors=colors, hole=0.7)])
+                                 marker=dict(colors=colors), hole=0.7)])
 
     fig.update_layout(
-        title='Valid vs Invalid Audit Element Events',
-        height=500,
+        title='Pourcentage des tâches valides ',
+        height=400,
         margin=dict(l=50, r=50, t=50, b=50)
     )
 
