@@ -41,13 +41,13 @@ def generate_protocols_per_day_graph(start_date, end_date, protocol_name):
     trace_jour = go.Bar(
         x=dates,
         y=protocol_counts,
-        name='Number of Protocols'
+        name='Nombre de protocols par jour'
     )
 
     layout = go.Layout(
-        title='Number of Protocols Per Day',
+        title='Nombre de protocols par jour',
         xaxis=dict(title='Date'),
-        yaxis=dict(title='Number of Protocols'),
+        yaxis=dict(title='Nombre de Protocols'),
     )
 
     fig = go.Figure(data=[trace_jour], layout=layout)
@@ -67,6 +67,138 @@ def generate_protocols_per_day_graph(start_date, end_date, protocol_name):
 def index(request):
     return render(request, 'index.html')
 
+
+
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+from datetime import datetime
+
+import re
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+from io import BytesIO
+import base64
+from django.db import connection
+from datetime import datetime
+
+
+def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
+    all_protocols = [
+        "Entretien courant",
+        "Chambre à blanc",
+        "Entretien courant Expert+",
+        "Entretien courant Avancé"
+    ]
+    with connection.cursor() as cursor:
+        if protocol_name == "Tous les protocols":
+            query = """
+                SELECT 
+                    DATE(pe.start) as day, 
+                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
+                FROM 
+                    protocol_event pe
+                JOIN 
+                    protocol p ON pe.protocol_id = p.protocol_id
+                WHERE 
+                    pe.start >= %s AND pe.start <= %s AND p.protocol_name IN %s
+                GROUP BY 
+                    DATE(pe.start)
+                ORDER BY 
+                    day
+            """
+            cursor.execute(query, [start_date, end_date, tuple(all_protocols)])
+        else:
+            query = """
+                SELECT 
+                    DATE(pe.start) as day, 
+                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
+                FROM 
+                    protocol_event pe
+                JOIN 
+                    protocol p ON pe.protocol_id = p.protocol_id
+                WHERE 
+                    pe.start >= %s AND pe.start <= %s AND p.protocol_name = %s
+                GROUP BY 
+                    DATE(pe.start)
+                ORDER BY 
+                    day
+            """
+            cursor.execute(query, [start_date, end_date, protocol_name])
+
+        results = cursor.fetchall()
+
+    days = [result[0] for result in results]
+    avg_durations = [result[1] for result in results]
+
+    fig = make_subplots()
+    trace = go.Scatter(
+        x=days,
+        y=avg_durations,
+        mode='lines+markers+text',
+        text=[f'{avg:.2f}' for avg in avg_durations],
+        textposition='top center',
+        marker=dict(size=10),
+        line=dict(width=2, color='blue')
+    )
+
+    fig.add_trace(trace)
+    fig.update_layout(
+        title=f'Durée moyenne pour\n{protocol_name}',
+        xaxis_title='Date',
+        yaxis_title='Durée moyenne minutes',
+        xaxis=dict(tickformat='%Y-%m-%d'),
+        autosize=True,
+        height=450,
+    )
+
+    graph_html = fig.to_html(full_html=False)
+    return graph_html
+
+def generate_tasks_count_graph(start_date, end_date):
+    all_protocols = [
+        "Entretien courant",
+        "Chambre à blanc",
+        "Entretien courant Expert+",
+        "Entretien courant Avancé"
+    ]
+
+    with connection.cursor() as cursor:
+        # Query to get the count of tasks for each protocol
+        query = """
+            SELECT p.protocol_name, COUNT(te.id) as task_count
+            FROM task_event te
+            JOIN protocol_task pt ON te.protocol_task_id = pt.id
+            JOIN protocol p ON pt.protocol_id = p.protocol_id
+            WHERE p.protocol_name IN %s AND te.start >= %s AND te.end <= %s
+            GROUP BY p.protocol_name
+        """
+        cursor.execute(query, [tuple(all_protocols), start_date, end_date])
+        results = cursor.fetchall()
+
+    # Prepare data for the graph
+    protocol_names = [result[0] for result in results]
+    task_counts = [result[1] for result in results]
+
+    # Create the bar plot
+    trace = go.Bar(
+        x=protocol_names,
+        y=task_counts,
+        name='Number of Tasks'
+    )
+
+    layout = go.Layout(
+        title='Nombre de tâchse par protocol',
+        xaxis=dict(title='Protocol'),
+        yaxis=dict(title='Nombre de tâches'),
+    )
+
+    fig = go.Figure(data=[trace], layout=layout)
+
+    # Convert the figure to an HTML string
+    graph_html = fig.to_html(full_html=False)
+    
+    return graph_html
 
 def protocol(request):
     # Get values from the form
@@ -140,9 +272,13 @@ def protocol(request):
     leading_zero_count = sum(1 for duration in durations if re.match(r'^0+\.\d+', str(duration)))
 
     graph_html = generate_protocols_per_day_graph(start_date, end_date, protocol_name)
+
     avg_duration_graph_html = generate_avg_duration_per_day_graph(start_date, end_date, protocol_name)
     pie_graph_html = plot_is_valid_pie()
     
+
+
+    graph_html_tasks_count = generate_tasks_count_graph(start_date, end_date)
 
 
     # Return the rounded average value along with the formatted dates, protocol, and leading zero count
@@ -155,7 +291,8 @@ def protocol(request):
         'leading_zero_count': leading_zero_count,
         'graph_html': graph_html,
         'avg_duration_graph_html': avg_duration_graph_html,
-        'pie_graph_html':pie_graph_html
+        'graph_html_tasks_count': graph_html_tasks_count ,
+        'pie_graph_html':pie_graph_html,
             } 
     return render(request, 'index.html', context)
 
