@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import protocol_list_with_name, index,form,protocol,protocolrooms,protocolday
+from .views import  index,form,protocol
 
 urlpatterns = [
     # path('protocolrooms/', protocolrooms, name='protocolrooms'),

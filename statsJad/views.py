@@ -2,8 +2,10 @@ from django.shortcuts import render
 from django.db import connection
 from datetime import datetime, timedelta
 from django.http import HttpResponse
-import re
 import plotly.graph_objs as go
+from collections import defaultdict
+import re
+from plotly.subplots import make_subplots
 
 
 def generate_protocols_per_day_graph(start_date, end_date, protocol_name):
@@ -58,236 +60,12 @@ def generate_protocols_per_day_graph(start_date, end_date, protocol_name):
 
     # Convert the figure to an HTML string
     graph_html = fig.to_html(full_html=False)
-    
+
     return graph_html
 
-def protocol_list_with_name(request):
-    specific_protocol_name = "Entretien courant"
-    
-    with connection.cursor() as cursor:
-        query = """
-            SELECT 
-                pe.id AS event_id, 
-                pe.user_id, 
-                pe.start, 
-                pe."end", 
-                p.protocol_name
-            FROM 
-                protocol_event pe
-            INNER JOIN 
-                protocol p ON pe.protocol_id = p.protocol_id
-            WHERE 
-                p.protocol_name = %s
-        """
-        cursor.execute(query, [specific_protocol_name])
-        columns = [col[0] for col in cursor.description]
-        protocol_events = [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
-
-    return render(request, 'protocol.html', {'protocol_events': protocol_events})
-
-def protocol_list_with_name_last_month(request):
-    today = datetime.today()
-    first_day_of_this_month = today.replace(day=1)
-    last_day_of_last_month = first_day_of_this_month - timedelta(days=1)
-    first_day_of_last_month = last_day_of_last_month.replace(day=1)
-
-    specific_protocol_name = "Entretien courant"
-    
-    with connection.cursor() as cursor:
-        query = """
-            SELECT 
-                pe.id AS event_id, 
-                pe.user_id, 
-                pe.start, 
-                pe."end", 
-                p.protocol_name,
-                pe.ehpad_id
-            FROM 
-                protocol_event pe
-            INNER JOIN 
-                protocol p ON pe.protocol_id = p.protocol_id
-            WHERE 
-                p.protocol_name = %s
-                AND pe.start >= %s
-                AND pe."end" <= %s
-        """
-        cursor.execute(query, [specific_protocol_name, first_day_of_last_month, last_day_of_last_month])
-        columns = [col[0] for col in cursor.description]
-        protocol_events = [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
-
-    return render(request, 'protocol.html', {'protocol_events': protocol_events})
-
-def protocol_list_last_month(request):
-    today = datetime.today()
-    first_day_of_this_month = today.replace(day=1)
-    last_day_of_last_month = first_day_of_this_month - timedelta(days=1)
-    first_day_of_last_month = last_day_of_last_month.replace(day=1)
-
-    protocol_names = [
-        "Entretien courant",
-        "Chambre à blanc",
-        "Entretien courant Expert+",
-        "Entretien courant Avancé"
-    ]
-
-    protocol_names_str = ', '.join(f"'{name}'" for name in protocol_names)
-    
-    with connection.cursor() as cursor:
-        query = f"""
-            SELECT 
-                pe.id AS event_id, 
-                pe.user_id, 
-                pe.start, 
-                pe."end", 
-                p.protocol_name,
-                pe.ehpad_id
-            FROM 
-                protocol_event pe
-            INNER JOIN 
-                protocol p ON pe.protocol_id = p.protocol_id
-            WHERE 
-                p.protocol_name IN ({protocol_names_str})
-                AND pe.start >= %s
-                AND pe."end" <= %s
-        """
-        cursor.execute(query, [first_day_of_last_month, last_day_of_last_month])
-        columns = [col[0] for col in cursor.description]
-        protocol_events = [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
-
-    return render(request, 'protocol.html', {'protocol_events': protocol_events})
-
-def protocol_list(request):
-    protocol_names = [
-        "Entretien courant",
-        "Chambre à blanc",
-        "Entretien courant Expert+",
-        "Entretien courant Avancé"
-    ]
-    
-    protocol_names_str = ', '.join(f"'{name}'" for name in protocol_names)
-    
-    with connection.cursor() as cursor:
-        query = f"""
-            SELECT 
-                pe.id AS event_id, 
-                pe.user_id, 
-                pe.start, 
-                pe."end", 
-                p.protocol_name,
-            FROM 
-                protocol_event pe
-            INNER JOIN 
-                protocol p ON pe.protocol_id = p.protocol_id
-            WHERE 
-                p.protocol_name IN ({protocol_names_str})
-        """
-        cursor.execute(query)
-        columns = [col[0] for col in cursor.description]
-        protocol_events = [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
-
-    return render(request, 'protocol.html', {'protocol_events': protocol_events})
 
 def index(request):
     return render(request, 'index.html')
-
-from datetime import datetime
-from django.db import connection
-from django.shortcuts import render
-
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
-from datetime import datetime
-from django.db import connection
-from collections import defaultdict
-from django.http import HttpResponse
-from django.shortcuts import render
-import re
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
-from io import BytesIO
-import base64
-from django.db import connection
-from datetime import datetime
-
-
-def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
-    with connection.cursor() as cursor:
-        if protocol_name == "Tous les protocols":
-            query = """
-                SELECT 
-                    DATE(pe.start) as day, 
-                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
-                FROM 
-                    protocol_event pe
-                JOIN 
-                    protocol p ON pe.protocol_id = p.protocol_id
-                WHERE 
-                    pe.start >= %s AND pe.start <= %s
-                GROUP BY 
-                    DATE(pe.start)
-                ORDER BY 
-                    day
-            """
-            cursor.execute(query, [start_date, end_date])
-        else:
-            query = """
-                SELECT 
-                    DATE(pe.start) as day, 
-                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
-                FROM 
-                    protocol_event pe
-                JOIN 
-                    protocol p ON pe.protocol_id = p.protocol_id
-                WHERE 
-                    pe.start >= %s AND pe.start <= %s AND p.protocol_name = %s
-                GROUP BY 
-                    DATE(pe.start)
-                ORDER BY 
-                    day
-            """
-            cursor.execute(query, [start_date, end_date, protocol_name])
-
-        results = cursor.fetchall()
-
-    days = [result[0] for result in results]
-    avg_durations = [result[1] for result in results]
-
-    fig = make_subplots()
-    trace = go.Scatter(
-        x=days,
-        y=avg_durations,
-        mode='lines+markers+text',
-        text=[f'{avg:.2f}' for avg in avg_durations],
-        textposition='top center',
-        marker=dict(size=10),
-        line=dict(width=2, color='blue')
-    )
-
-    fig.add_trace(trace)
-    fig.update_layout(
-        title=f'Durée moyenne pour\n{protocol_name}',
-        xaxis_title='Date',
-        yaxis_title='Durée moyenne minutes',
-        xaxis=dict(tickformat='%Y-%m-%d'),
-        autosize=True,
-        height=450,
-    )
-
-    graph_html = fig.to_html(full_html=False)
-    return graph_html
 
 
 def protocol(request):
@@ -363,126 +141,25 @@ def protocol(request):
 
     graph_html = generate_protocols_per_day_graph(start_date, end_date, protocol_name)
     avg_duration_graph_html = generate_avg_duration_per_day_graph(start_date, end_date, protocol_name)
+    pie_graph_html = plot_is_valid_pie()
+    
+
 
     # Return the rounded average value along with the formatted dates, protocol, and leading zero count
     context = {
         'avg_duration': avg_duration,
-        'start_date': formatted_start_date,
-        'end_date': formatted_end_date,
+        'start_date': start_date_str,
+        'end_date': end_date_str,
         'protocol_name': protocol_name,
         'protocol_count': protocol_count,
         'leading_zero_count': leading_zero_count,
         'graph_html': graph_html,
-        'avg_duration_graph_html': avg_duration_graph_html
-    }
+        'avg_duration_graph_html': avg_duration_graph_html,
+        'pie_graph_html':pie_graph_html
+            } 
     return render(request, 'index.html', context)
 
 
-
-def protocolday(request):
-    if request.method == 'POST':
-        # Get values from the form
-        start_date_str = request.POST.get('date-start')
-        end_date_str = request.POST.get('date-end')
-        protocol_name = request.POST.get('protocol-select')
-
-        # Convert form dates to datetime objects
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-
-        # Format dates to 'dd/mm/yyyy'
-        formatted_start_date = start_date.strftime('%d/%m/%Y')
-        formatted_end_date = end_date.strftime('%d/%m/%Y')
-
-        # Query to get the number of protocols done per day
-        with connection.cursor() as cursor:
-            if protocol_name == "Tous les protocols":
-                query = """
-                    SELECT DATE(start) as day, COUNT(*) as protocol_count
-                    FROM protocol_event
-                    WHERE start >= %s AND start <= %s
-                    GROUP BY DATE(start)
-                    ORDER BY day
-                """
-                cursor.execute(query, [start_date, end_date])
-            else:
-                query = """
-                    SELECT DATE(pe.start) as day, COUNT(*) as protocol_count
-                    FROM protocol_event pe
-                    JOIN protocol p ON pe.protocol_id = p.protocol_id
-                    WHERE pe.start >= %s AND pe.start <= %s AND p.protocol_name = %s
-                    GROUP BY DATE(pe.start)
-                    ORDER BY day
-                """
-                cursor.execute(query, [start_date, end_date, protocol_name])
-
-            results = cursor.fetchall()
-
-        # Print the results for verification
-        for result in results:
-            print(f"Date: {result[0]}, Protocol Count: {result[1]}")
-
-
-        # Prepare data for the template
-        protocols_per_day = defaultdict(int)
-        for day, count in results:
-            protocols_per_day[day] = count
-
-        avg_duration_graph_html = generate_avg_duration_per_day_graph(start_date, end_date, protocol_name)
-
-        context = {
-            'protocols_per_day': protocols_per_day,
-            'formatted_start_date': formatted_start_date,
-            'formatted_end_date': formatted_end_date,
-            'protocol_name': protocol_name,
-            'avg_duration_graph_html': avg_duration_graph_html
-        }
-
-        return render(request, 'index.html', context)
-
-def protocolrooms(request):
-    # Get values from the form
-    start_date_str = request.POST.get('date-start')
-    end_date_str = request.POST.get('date-end')
-    protocol_name = request.POST.get('protocol-select')
-
-    # Convert form dates to datetime objects
-    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-
-    query = """
-        SELECT 
-            r.room_number,
-            COUNT(pe.room_id) AS protocol_event_count
-        FROM 
-            protocol_event pe
-        LEFT JOIN 
-            protocol p ON pe.protocol_id = p.protocol_id
-        LEFT JOIN 
-            room r ON pe.ehpad_id = r.ehpad_id
-        WHERE 
-            pe.start >= %s
-            AND pe."end" <= %s
-            AND p.protocol_name = %s
-        GROUP BY 
-            r.room_number
-        ORDER BY 
-            r.room_number
-    """
-
-    with connection.cursor() as cursor:
-        cursor.execute(query, [start_date, end_date, protocol_name])
-        results = cursor.fetchall()
-
-    # Print the results in the terminal
-    print(f"Protocols from {start_date_str} to {end_date_str} for protocol: {protocol_name}")
-    print(results)
-    for row in results:
-        room_number = row[0]
-        protocol_event_count = row[1]
-        print(f"Room Number: {room_number}, Protocol Event Count: {protocol_event_count}")
-    
-    return HttpResponse("The results have been printed in the terminal.")
 
 def form(request):
     if request.method == 'POST':
@@ -500,4 +177,107 @@ def form(request):
         return HttpResponse("Invalid request method.")
 
 
+import io
+import base64
+from datetime import datetime
+from django.shortcuts import render
+from django.db import connection
+import matplotlib.pyplot as plt
 
+def plot_is_valid_pie():
+    # Perform raw SQL query to get counts of is_valid values
+    query = """
+        SELECT COUNT(id) AS total_events, SUM(CASE WHEN is_valid THEN 1 ELSE 0 END) AS valid_count
+        FROM audit_element_event
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        row = cursor.fetchone()
+        total_events = row[0]
+        valid_count = row[1]
+        invalid_count = total_events - valid_count  # Calculate invalid count
+
+    # Create data for Plotly pie chart
+    labels = ['Valid', 'Invalid']
+    values = [valid_count, invalid_count]
+    colors = ['#1f77b4', '#ff7f0e']  # Blue for Valid, Orange for Invalid
+
+    fig = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='percent',
+                                 marker_colors=colors, hole=0.7)])
+
+    fig.update_layout(
+        title='Valid vs Invalid Audit Element Events',
+        height=500,
+        margin=dict(l=50, r=50, t=50, b=50)
+    )
+
+    # Convert plot to HTML
+    graph_html = fig.to_html(full_html=False)
+
+    return graph_html
+
+def generate_avg_duration_per_day_graph(start_date, end_date, protocol_name):
+    with connection.cursor() as cursor:
+        if protocol_name == "Tous les protocols":
+            query = """
+                SELECT 
+                    DATE(pe.start) as day, 
+                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
+                FROM 
+                    protocol_event pe
+                JOIN 
+                    protocol p ON pe.protocol_id = p.protocol_id
+                WHERE 
+                    pe.start >= %s AND pe.start <= %s
+                GROUP BY 
+                    DATE(pe.start)
+                ORDER BY 
+                    day
+            """
+            cursor.execute(query, [start_date, end_date])
+        else:
+            query = """
+                SELECT 
+                    DATE(pe.start) as day, 
+                    AVG(EXTRACT(EPOCH FROM (pe."end" - pe.start)) / 60) as avg_duration_minutes
+                FROM 
+                    protocol_event pe
+                JOIN 
+                    protocol p ON pe.protocol_id = p.protocol_id
+                WHERE 
+                    pe.start >= %s AND pe.start <= %s AND p.protocol_name = %s
+                GROUP BY 
+                    DATE(pe.start)
+                ORDER BY 
+                    day
+            """
+            cursor.execute(query, [start_date, end_date, protocol_name])
+
+        results = cursor.fetchall()
+
+    days = [result[0] for result in results]
+    avg_durations = [result[1] for result in results]
+
+    fig = make_subplots()
+    trace = go.Scatter(
+        x=days,
+        y=avg_durations,
+        mode='lines+markers+text',
+        text=[f'{avg:.2f}' for avg in avg_durations],
+        textposition='top center',
+        marker=dict(size=10),
+        line=dict(width=2, color='blue')
+    )
+
+    fig.add_trace(trace)
+    fig.update_layout(
+        title=f'Durée moyenne pour\n{protocol_name}',
+        xaxis_title='Date',
+        yaxis_title='Durée moyenne minutes',
+        xaxis=dict(tickformat='%Y-%m-%d'),
+        autosize=True,
+        height=450,
+    )
+
+    graph_html = fig.to_html(full_html=False)
+    return graph_html
